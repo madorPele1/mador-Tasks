@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מדור פיתוח הדרכה | לוח משימות</title>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=Rubik:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- ════════════════════════════════════════════
+       🔥 FIREBASE SETUP — קרא אותי!
+       1. לך ל: https://console.firebase.google.com
+       2. צור פרויקט חדש (בחינם) — לחץ "Add project"
+       3. לאחר היצירה: Project Settings (גלגל שיניים) > General > Your apps > לחץ </> (Web)
+       4. תן שם לאפליקציה, לחץ Register app, העתק את firebaseConfig
+       5. הדבק את הערכים למטה (החלף את ה-YOUR_...)
+       6. לך ל: Build > Realtime Database > Create Database > בחר "Start in test mode"
+       ════════════════════════════════════════════ -->
+  <script type="module">
+    import { initializeApp }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update, remove }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // ▼▼▼ הדבק כאן את הערכים מ-Firebase Console ▼▼▼
+    const firebaseConfig = {
+      apiKey:            "AIzaSyBG-V0fpWoYZ8sn4FKfig1uj5w4zI-OfLg",
+      authDomain:        "mador-pele.firebaseapp.com",
+      databaseURL:       "https://mador-pele-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:         "mador-pele",
+      storageBucket:     "mador-pele.firebasestorage.app",
+      messagingSenderId: "510364469511",
+      appId:             "1:510364469511:web:c1a38e2a5bc29cc7cd1da2"
+    };
+    // ▲▲▲ ▲▲▲ ▲▲▲ ▲▲▲ ▲▲▲ ▲▲▲
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      const db  = getDatabase(app);
+      window._fb = { db, tasksRef: ref(db,'tasks'), ref, onValue, set, update, remove };
+      window._fbReady = true;
+      document.dispatchEvent(new Event('fb-ready'));
+    } catch(e) {
+      console.warn('Firebase init failed:', e.message);
+      document.dispatchEvent(new Event('fb-failed'));
+    }
+  </script>
+
+  <style>
+    :root {
+      --orange:        #F4620E;
+      --orange-light:  #FF8C42;
+      --orange-pastel: #FDE8D8;
+      --orange-mid:    #F5C4A2;
+      --teal:          #1AA8C4;
+      --teal-light:    #4FC3D9;
+      --teal-dim:      #E0F7FB;
+      --pink:          #E8558A;
+      --pink-light:    #F28AB2;
+      --pink-dim:      #FDE9F2;
+      --dark:          #2D1A0E;
+      --mid:           #5A3E2B;
+      --muted:         #A08070;
+      --bg:            #FFF8F4;
+      --card:          #FFFFFF;
+      --border:        #EDD9C8;
+      --shadow:        0 3px 20px rgba(150,70,20,0.08);
+      --shadow-lg:     0 10px 40px rgba(150,70,20,0.15);
+      --radius:        16px;
+      --radius-sm:     10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      min-height: 100vh;
+      direction: rtl;
+    }
+
+    /* ═══ HEADER ═══ */
+    header {
+      background: linear-gradient(140deg, #FDEEE3 0%, #FDE8E8 50%, #FDE0F0 100%);
+      border-bottom: 2px solid var(--orange-mid);
+      position: relative; overflow: hidden;
+    }
+    .hdr-blob1 {
+      position:absolute; top:-50px; right:-50px;
+      width:220px; height:220px; border-radius:50%;
+      background: radial-gradient(circle, rgba(244,98,14,0.12) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    .hdr-blob2 {
+      position:absolute; bottom:-60px; left:-30px;
+      width:200px; height:200px; border-radius:50%;
+      background: radial-gradient(circle, rgba(232,85,138,0.10) 0%, transparent 70%);
+      pointer-events:none;
+    }
+    .hdr-dots {
+      position:absolute; top:14px; left:50%;
+      transform:translateX(-50%);
+      display:flex; gap:5px; opacity:.2; pointer-events:none;
+    }
+    .hdr-dots span { width:5px; height:5px; border-radius:50%; background:var(--orange); }
+
+    .hdr-inner {
+      position:relative; z-index:2;
+      max-width:1200px; margin:0 auto;
+      padding:20px 26px 16px;
+      display:flex; align-items:center; gap:18px;
+    }
+    .hdr-logo {
+      width:72px; height:72px; border-radius:16px;
+      border:3px solid rgba(232,85,138,0.4);
+      background:linear-gradient(135deg,#FFD4B8,#FFB3D4);
+      display:flex; align-items:center; justify-content:center;
+      font-size:32px; flex-shrink:0; overflow:hidden;
+      box-shadow:0 4px 14px rgba(244,98,14,0.18);
+    }
+    .hdr-logo img { width:100%; height:100%; object-fit:cover; border-radius:13px; }
+    .hdr-text h1 {
+      font-family:'Rubik',sans-serif;
+      font-size:clamp(17px,4vw,26px); font-weight:800;
+      color:var(--dark); line-height:1.15;
+    }
+    .hdr-text h1 em { color:var(--orange); font-style:normal; }
+    .hdr-text p { font-size:12px; color:var(--muted); margin-top:3px; }
+    .hdr-badges {
+      margin-right:auto; display:flex; flex-direction:column;
+      align-items:flex-end; gap:5px;
+    }
+    .hbadge {
+      font-size:11px; font-weight:700; padding:4px 12px;
+      border-radius:50px; letter-spacing:.4px; white-space:nowrap;
+    }
+    .hb-o { background:rgba(244,98,14,.14); color:var(--orange); border:1.5px solid rgba(244,98,14,.28); }
+    .hb-p { background:rgba(232,85,138,.14); color:var(--pink);   border:1.5px solid rgba(232,85,138,.28); }
+
+    /* ═══ SYNC INDICATOR ═══ */
+    #syncBadge {
+      position:fixed; bottom:14px; left:14px; z-index:600;
+      font-size:11px; font-weight:700; padding:5px 13px; border-radius:50px;
+      background:var(--card); border:1.5px solid var(--border);
+      box-shadow:var(--shadow); color:var(--muted);
+      transition:all .3s; display:flex; align-items:center; gap:5px;
+    }
+    #syncBadge.ok    { color:#276749; border-color:#68d391; background:#f0fff4; }
+    #syncBadge.err   { color:#c53030; border-color:#fc8181; background:#fff5f5; }
+    #syncBadge.spin  { color:var(--teal); border-color:var(--teal-light); background:var(--teal-dim); }
+
+    /* ═══ TABS ═══ */
+    .tabs-shell {
+      background:var(--card);
+      border-bottom:1.5px solid var(--border);
+      position:sticky; top:0; z-index:200;
+      box-shadow:0 2px 14px rgba(150,70,20,.06);
+    }
+    .team-strip {
+      max-width:1200px; margin:0 auto;
+      padding:0 18px; overflow-x:auto; scrollbar-width:none;
+    }
+    .team-strip::-webkit-scrollbar { display:none; }
+    .tabs-row { display:flex; }
+    .tab {
+      display:flex; flex-direction:column; align-items:center;
+      padding:11px 14px 9px; cursor:pointer;
+      border-bottom:3px solid transparent;
+      transition:all .18s; white-space:nowrap; min-width:76px;
+    }
+    .tab:hover { background:var(--bg); }
+    .tab.on { border-bottom-color:var(--pink); }
+    .t-av {
+      width:32px; height:32px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:800; font-size:12px; color:#fff;
+      margin-bottom:4px; position:relative; flex-shrink:0;
+    }
+    .t-cnt {
+      position:absolute; top:-4px; left:-4px;
+      width:17px; height:17px; border-radius:50%;
+      background:var(--pink); color:#fff; font-size:9px; font-weight:800;
+      display:flex; align-items:center; justify-content:center;
+      border:2px solid var(--card);
+    }
+    .t-name { font-size:11px; font-weight:700; color:var(--mid); text-align:center; }
+    .tab.on .t-name { color:var(--dark); }
+    .t-role { font-size:9px; color:var(--muted); text-align:center; }
+
+    /* ═══ MAIN ═══ */
+    .main { max-width:1200px; margin:0 auto; padding:22px 22px 90px; }
+
+    /* ═══ TOOLBAR ═══ */
+    .bar { display:flex; align-items:center; gap:9px; margin-bottom:18px; flex-wrap:wrap; }
+    .bar-title { font-size:17px; font-weight:800; color:var(--dark); flex:1; min-width:130px; }
+    .bar-title span { color:var(--pink); }
+
+    .pills {
+      display:flex; background:var(--card);
+      border:1.5px solid var(--border); border-radius:50px;
+      padding:3px; gap:2px;
+    }
+    .pill {
+      font-size:12px; font-weight:700; padding:6px 12px;
+      border-radius:50px; cursor:pointer; transition:all .16s;
+      background:none; border:none; color:var(--muted);
+      font-family:'Heebo',sans-serif; white-space:nowrap;
+    }
+    .pill.on { color:#fff; }
+    .pill.on.s-active  { background:var(--teal); }
+    .pill.on.s-done    { background:#48bb78; }
+    .pill.on.s-all     { background:var(--dark); }
+    .pill.on.so-urg    { background:var(--orange); }
+    .pill.on.so-cre    { background:var(--mid); }
+
+    .add-btn {
+      background:linear-gradient(135deg,var(--pink) 0%,var(--orange) 100%);
+      color:#fff; border:none; border-radius:50px;
+      padding:10px 18px; font-size:13px; font-weight:800;
+      cursor:pointer; transition:all .2s; font-family:'Heebo',sans-serif;
+      display:flex; align-items:center; gap:5px;
+      box-shadow:0 4px 14px rgba(232,85,138,0.28); white-space:nowrap;
+    }
+    .add-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(232,85,138,0.40); }
+
+    /* ═══ GRID ═══ */
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px; }
+
+    .empty {
+      grid-column:1/-1; text-align:center; padding:64px 20px; color:var(--muted);
+    }
+    .empty .ei { font-size:52px; margin-bottom:12px; }
+    .empty h3  { font-size:16px; font-weight:700; color:var(--mid); margin-bottom:5px; }
+
+    /* ═══ CARD ═══ */
+    @keyframes cardIn {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .card {
+      background:var(--card); border-radius:var(--radius);
+      box-shadow:var(--shadow); border:1.5px solid var(--border);
+      overflow:hidden; transition:transform .2s, box-shadow .2s;
+      animation:cardIn .26s ease both;
+    }
+    .card:hover { transform:translateY(-3px); box-shadow:var(--shadow-lg); }
+    .card.done-card { opacity:.68; }
+    .card.done-card:hover { opacity:1; }
+
+    .card-bar { height:5px; }
+    .uc .card-bar { background:linear-gradient(90deg,#E53E3E,#FC8181); }
+    .uh .card-bar { background:linear-gradient(90deg,var(--orange),var(--pink)); }
+    .um .card-bar { background:linear-gradient(90deg,var(--teal),var(--teal-light)); }
+    .ul .card-bar { background:linear-gradient(90deg,#ccc,#ddd); }
+    .ud .card-bar { background:linear-gradient(90deg,#68d391,#38a169); }
+
+    .card-body { padding:14px 15px 11px; }
+    .card-hd   { display:flex; align-items:flex-start; gap:9px; margin-bottom:9px; }
+
+    /* Done button */
+    .done-btn {
+      flex-shrink:0; width:24px; height:24px; border-radius:50%;
+      border:2.5px solid var(--border); background:none; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .16s; margin-top:2px; position:relative;
+    }
+    .done-btn::after { content:''; }
+    .done-btn:hover  { border-color:#48bb78; background:#f0fff4; }
+    .done-btn:hover::after { content:'✓'; color:#48bb78; font-weight:900; font-size:12px; position:absolute; }
+    .done-btn.ticked { border-color:#48bb78; background:#48bb78; }
+    .done-btn.ticked::after { content:'✓'; color:#fff; font-weight:900; font-size:12px; position:absolute; }
+
+    .card-title { font-size:14px; font-weight:700; color:var(--dark); flex:1; line-height:1.35; }
+    .card-title.x { text-decoration:line-through; color:var(--muted); }
+    .card-desc  {
+      font-size:12px; color:var(--mid); line-height:1.55; margin-bottom:10px;
+      display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+    }
+    .card-chips { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px; }
+    .chip {
+      display:flex; align-items:center; gap:4px;
+      padding:3px 8px; border-radius:50px; font-size:11px; font-weight:700;
+    }
+    .chip-dot { width:6px; height:6px; border-radius:50%; }
+    .card-dates { display:flex; gap:9px; flex-wrap:wrap; }
+    .dp { display:flex; align-items:center; gap:3px; font-size:11px; font-weight:600; color:var(--muted); }
+    .dp.ov { color:#c53030; }
+    .dp.sn { color:var(--orange); }
+
+    .card-ft {
+      padding:7px 15px; border-top:1.5px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; gap:7px;
+    }
+    .tags { display:flex; gap:4px; flex-wrap:wrap; }
+    .tag { font-size:10px; font-weight:700; padding:2px 7px; border-radius:50px; }
+    .tu-c { background:#fff5f5; color:#c53030; }
+    .tu-h { background:var(--pink-dim); color:var(--pink); }
+    .tu-m { background:var(--teal-dim); color:var(--teal); }
+    .tu-l { background:var(--bg); color:var(--muted); }
+    .tu-d { background:#f0fff4; color:#276749; }
+    .tc   { background:var(--orange-pastel); color:var(--orange); }
+
+    .cacts { display:flex; gap:2px; }
+    .ib {
+      width:27px; height:27px; border-radius:7px;
+      border:none; background:none; cursor:pointer;
+      font-size:13px; transition:all .14s; color:var(--muted);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .ib:hover     { background:var(--bg); color:var(--dark); }
+    .ib.dl:hover  { background:#fff5f5; color:#c53030; }
+
+    /* ═══ MODAL ═══ */
+    .overlay {
+      position:fixed; inset:0;
+      background:rgba(30,10,0,.45);
+      backdrop-filter:blur(6px);
+      z-index:1000; display:flex; align-items:center; justify-content:center;
+      padding:14px; opacity:0; pointer-events:none; transition:opacity .2s;
+    }
+    .overlay.open { opacity:1; pointer-events:all; }
+    .modal {
+      background:var(--card); border-radius:22px;
+      width:100%; max-width:540px; max-height:92vh; overflow-y:auto;
+      box-shadow:0 20px 70px rgba(150,60,10,.22);
+      transform:translateY(22px) scale(.97); transition:transform .22s;
+    }
+    .overlay.open .modal { transform:translateY(0) scale(1); }
+    .modal-top { height:5px; background:linear-gradient(90deg,var(--pink),var(--orange)); border-radius:22px 22px 0 0; }
+    .modal-hd  {
+      padding:18px 20px 0; display:flex; align-items:center;
+      justify-content:space-between; margin-bottom:16px;
+    }
+    .modal-hd h2 { font-size:18px; font-weight:800; }
+    .modal-hd h2 em { color:var(--pink); font-style:normal; }
+    .x-btn {
+      width:30px; height:30px; border-radius:50%;
+      border:none; background:var(--bg); cursor:pointer; font-size:16px;
+      display:flex; align-items:center; justify-content:center; color:var(--mid);
+      transition:all .14s;
+    }
+    .x-btn:hover { background:var(--pink-dim); color:var(--pink); }
+
+    .modal-bd { padding:0 20px 20px; }
+    .fg { margin-bottom:14px; }
+    .fr { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+    label {
+      display:block; font-size:11px; font-weight:800;
+      color:var(--mid); margin-bottom:4px;
+      text-transform:uppercase; letter-spacing:.5px;
+    }
+    label .r { color:var(--pink); }
+    input[type="text"], input[type="date"], textarea, select {
+      width:100%; padding:10px 12px;
+      border:1.5px solid var(--border); border-radius:var(--radius-sm);
+      font-family:'Heebo',sans-serif; font-size:14px;
+      color:var(--dark); background:var(--bg);
+      transition:border-color .14s, background .14s;
+      outline:none; direction:rtl;
+    }
+    input:focus, textarea:focus, select:focus { border-color:var(--teal); background:#fff; }
+    textarea { resize:vertical; min-height:72px; }
+
+    .ag { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .ai {
+      display:flex; align-items:center; gap:7px;
+      padding:7px 9px; border-radius:var(--radius-sm);
+      border:1.5px solid var(--border); cursor:pointer; transition:all .14s;
+    }
+    .ai:hover { border-color:var(--pink-light); background:var(--pink-dim); }
+    .ai.on    { border-color:var(--pink); background:var(--pink-dim); }
+    .ai-av {
+      width:26px; height:26px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:10px; font-weight:800; color:#fff; flex-shrink:0;
+    }
+    .ai-nm { font-size:12px; font-weight:700; flex:1; }
+    .ai-ck {
+      width:15px; height:15px; border-radius:4px;
+      border:1.5px solid var(--border);
+      display:flex; align-items:center; justify-content:center;
+      font-size:9px; flex-shrink:0;
+    }
+    .ai.on .ai-ck { background:var(--pink); border-color:var(--pink); color:#fff; }
+
+    .divider {
+      display:flex; align-items:center; gap:9px;
+      margin:16px 0 12px; color:var(--muted); font-size:10px; font-weight:800;
+      text-transform:uppercase; letter-spacing:.8px;
+    }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .save-btn {
+      width:100%; padding:12px;
+      background:linear-gradient(135deg,var(--pink) 0%,var(--orange) 100%);
+      color:#fff; border:none; border-radius:var(--radius-sm);
+      font-family:'Heebo',sans-serif; font-size:14px; font-weight:800;
+      cursor:pointer; transition:all .2s;
+      box-shadow:0 4px 14px rgba(232,85,138,.30);
+    }
+    .save-btn:hover    { transform:translateY(-1px); box-shadow:0 6px 20px rgba(232,85,138,.42); }
+    .save-btn:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width:640px) {
+      .hdr-inner   { flex-wrap:wrap; gap:10px; padding:14px 14px 12px; }
+      .hdr-badges  { flex-direction:row; margin-right:0; width:100%; }
+      .main        { padding:14px 10px 80px; }
+      .bar         { gap:7px; }
+      .bar-title   { font-size:14px; width:100%; }
+      .grid        { grid-template-columns:1fr; }
+      .fr          { grid-template-columns:1fr; }
+      .ag          { grid-template-columns:1fr; }
+      .add-btn     { padding:9px 13px; font-size:12px; }
+      .tab         { padding:9px 9px 7px; min-width:62px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="hdr-blob1"></div>
+  <div class="hdr-blob2"></div>
+  <div class="hdr-dots">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+  <div class="hdr-inner">
+    <div class="hdr-logo">
+      <!-- 🖼️ להחלפת תמונה: מחק את 🎖️ והוסף <img src="תמונה.jpg"> -->
+      🎖️
+    </div>
+    <div class="hdr-text">
+      <h1>מדור <em>פיתוח הדרכה</em></h1>
+      <p>פיקוד העורף · לוח משימות צוות</p>
+    </div>
+    <div class="hdr-badges">
+      <span class="hbadge hb-o">🟠 פיקוד העורף</span>
+      <span class="hbadge hb-p">🩷 מדור ורוד</span>
+    </div>
+  </div>
+</header>
+
+<!-- TEAM TABS -->
+<div class="tabs-shell">
+  <div class="team-strip">
+    <div class="tabs-row" id="tabs"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="bar">
+    <div class="bar-title" id="barTitle">כל המשימות <span>·</span></div>
+
+    <!-- Status filter -->
+    <div class="pills">
+      <button class="pill s-active on" data-status="active" onclick="setStatus(this)">פעילות</button>
+      <button class="pill s-done"      data-status="done"   onclick="setStatus(this)">✅ הושלמו</button>
+      <button class="pill s-all"       data-status="all"    onclick="setStatus(this)">הכל</button>
+    </div>
+
+    <!-- Sort -->
+    <div class="pills">
+      <button class="pill so-urg on" data-sort="urgency" onclick="setSort(this)">🔥 דחיפות</button>
+      <button class="pill so-cre"   data-sort="created"  onclick="setSort(this)">🕐 נוצר</button>
+    </div>
+
+    <button class="add-btn" onclick="openAdd()">+ משימה</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- SYNC BADGE -->
+<div id="syncBadge" class="spin">⏳ מתחבר...</div>
+
+<!-- MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-top"></div>
+    <div class="modal-hd">
+      <h2 id="mTitle">משימה <em>חדשה</em></h2>
+      <button class="x-btn" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-bd">
+      <div class="fg">
+        <label><span class="r">* </span>כותרת המשימה</label>
+        <input type="text" id="fT" placeholder="מה צריך לעשות?" />
+      </div>
+      <div class="fg">
+        <label>תיאור</label>
+        <textarea id="fD" placeholder="פרטים נוספים..."></textarea>
+      </div>
+      <div class="fg">
+        <label><span class="r">* </span>שיוך לחברי צוות</label>
+        <div class="ag" id="agrid"></div>
+      </div>
+      <div class="fr">
+        <div class="fg">
+          <label><span class="r">* </span>תאריך התחלה</label>
+          <input type="date" id="fS" />
+        </div>
+        <div class="fg">
+          <label>דד-ליין</label>
+          <input type="date" id="fDl" />
+        </div>
+      </div>
+      <div class="divider">פרטים נוספים</div>
+      <div class="fg">
+        <label>קטגוריה</label>
+        <select id="fC">
+          <option value="">ללא קטגוריה</option>
+          <option>לומדה</option><option>גרפיקה</option>
+          <option>הדרכה</option><option>ניהול</option>
+          <option>מחקר</option><option>אחר</option>
+        </select>
+      </div>
+      <button class="save-btn" id="saveBtn" onclick="save()">💾 שמור משימה</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════
+   TEAM DATA
+══════════════════════════════ */
+const TEAM = [
+  { id:'all',   name:'הכל',    role:'כל המשימות',          color:'#E8558A', ini:'★' },
+  { id:'mirav', name:'מירב',   role:'רס"ן · מפקדת המדור',  color:'#F4620E', ini:'מק' },
+  { id:'ariel', name:'אריאל',  role:'יועץ אזרחי',           color:'#1AA8C4', ini:'אל' },
+  { id:'shir',  name:'שיר',    role:'סג"מ · קצינה',         color:'#E8558A', ini:'שז' },
+  { id:'eden',  name:'עדן',    role:'רב"ט · מפתחת',         color:'#9B59B6', ini:'עז' },
+  { id:'friel', name:'פריאל',  role:'רב"ט · גרפיקאית',     color:'#FF8C42', ini:'פס' },
+  { id:'mai',   name:'מאי',    role:'רב"ט · מפתחת',         color:'#2ECC71', ini:'מש' },
+  { id:'rotem', name:'רתם',    role:'רב"ט · מפתחת',         color:'#3498DB', ini:'רש' },
+];
+const TM = Object.fromEntries(TEAM.map(t=>[t.id,t]));
+const UL = { critical:'🔴 קריטי', high:'🟠 גבוה', medium:'🟡 בינוני', low:'⚪ נמוך', done:'✅ הושלם' };
+
+/* ══════════════════════════════
+   STATE
+══════════════════════════════ */
+let tasks  = {};
+let fTeam  = 'all';
+let fStat  = 'active';
+let fSort  = 'urgency';
+let editId = null;
+let fbLive = false;
+
+/* ══════════════════════════════
+   FIREBASE
+══════════════════════════════ */
+function badge(state, txt) {
+  const el = document.getElementById('syncBadge');
+  el.className = state; el.textContent = txt;
+}
+
+function initFB() {
+  if (!window._fbReady || !window._fb) { fallback(); return; }
+  const { tasksRef, onValue } = window._fb;
+  badge('spin','⏳ מתחבר...');
+  onValue(tasksRef, snap => {
+    tasks = snap.val() || {};
+    badge('ok','🟢 מסונכרן — Firebase');
+    renderAll();
+  }, err => {
+    console.error(err);
+    badge('err','🔴 שגיאת Firebase');
+    fallback();
+  });
+  fbLive = true;
+}
+
+function fallback() {
+  tasks = JSON.parse(localStorage.getItem('madar_v3')||'{}');
+  badge('err','⚠️ מצב לא-מקוון (localStorage)');
+  if (!Object.keys(tasks).length) seed();
+  renderAll();
+}
+
+function lsSave() {
+  if (!fbLive) localStorage.setItem('madar_v3', JSON.stringify(tasks));
+}
+
+async function dbSet(id, data) {
+  if (fbLive && window._fb) {
+    const { db, ref, set } = window._fb;
+    await set(ref(db,'tasks/'+id), data);
+  } else { tasks[id]=data; lsSave(); renderAll(); }
+}
+
+async function dbPatch(id, patch) {
+  if (fbLive && window._fb) {
+    const { db, ref, update } = window._fb;
+    await update(ref(db,'tasks/'+id), patch);
+  } else { Object.assign(tasks[id],patch); lsSave(); renderAll(); }
+}
+
+async function dbDel(id) {
+  if (fbLive && window._fb) {
+    const { db, ref, remove } = window._fb;
+    await remove(ref(db,'tasks/'+id));
+  } else { delete tasks[id]; lsSave(); renderAll(); }
+}
+
+/* ══════════════════════════════
+   URGENCY
+══════════════════════════════ */
+function urgency(t) {
+  if (t.done) return { lv:'done', sc:99999 };
+  if (!t.deadline) return { lv:'low', sc:9999 };
+  const n = new Date(); n.setHours(0,0,0,0);
+  const d = new Date(t.deadline); d.setHours(0,0,0,0);
+  const diff = Math.ceil((d-n)/86400000);
+  if (diff<0)   return {lv:'critical', sc:diff-9000};
+  if (diff<=2)  return {lv:'critical', sc:diff};
+  if (diff<=7)  return {lv:'high',     sc:diff};
+  if (diff<=21) return {lv:'medium',   sc:diff};
+  return              {lv:'low',       sc:diff};
+}
+
+/* ══════════════════════════════
+   RENDER
+══════════════════════════════ */
+function renderAll() { renderTabs(); renderGrid(); }
+
+function renderTabs() {
+  const wrap = document.getElementById('tabs');
+  wrap.innerHTML = '';
+  TEAM.forEach(m => {
+    const all = Object.values(tasks);
+    const cnt = m.id==='all'
+      ? all.filter(t=>!t.done).length
+      : all.filter(t=>!t.done && (t.assignees||[]).includes(m.id)).length;
+
+    const el = document.createElement('div');
+    el.className = 'tab' + (m.id===fTeam?' on':'');
+    el.onclick = ()=>{ fTeam=m.id; renderAll(); };
+    el.innerHTML = `
+      <div class="t-av" style="background:${m.color}">
+        ${m.ini}
+        ${cnt>0?`<span class="t-cnt">${cnt}</span>`:''}
+      </div>
+      <div class="t-name">${m.name}</div>
+      <div class="t-role">${m.role.split('·')[0].trim()}</div>
+    `;
+    wrap.appendChild(el);
+  });
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const titleEl = document.getElementById('barTitle');
+
+  let list = Object.entries(tasks).map(([id,t])=>({id,...t}));
+
+  // filters
+  if (fTeam!=='all') list = list.filter(t=>(t.assignees||[]).includes(fTeam));
+  if (fStat==='active') list = list.filter(t=>!t.done);
+  if (fStat==='done')   list = list.filter(t=> t.done);
+
+  // sort
+  if (fSort==='urgency') list.sort((a,b)=>urgency(a).sc - urgency(b).sc);
+  else list.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+
+  const m = TM[fTeam];
+  const statLbl = fStat==='active'?'פעילות':fStat==='done'?'הושלמו':'הכל';
+  titleEl.innerHTML = `${m.name} <span>· ${list.length} ${statLbl}</span>`;
+
+  grid.innerHTML = '';
+  if (!list.length) {
+    const msg = fStat==='done'?'📦 אין משימות שהושלמו עדיין':'🎯 אין משימות פעילות';
+    const sub = fStat==='done'?'סמני משימות כהושלמו כדי לראות אותן כאן':'לחצ/י "+ משימה" כדי להתחיל';
+    grid.innerHTML = `<div class="empty"><div class="ei">${fStat==='done'?'📦':'🎯'}</div><h3>${msg}</h3><p>${sub}</p></div>`;
+    return;
+  }
+
+  const uvMap = { critical:'uc', high:'uh', medium:'um', low:'ul', done:'ud' };
+  const tagMap = { critical:'tu-c', high:'tu-h', medium:'tu-m', low:'tu-l', done:'tu-d' };
+
+  list.forEach((t,i) => {
+    const u = urgency(t);
+    const c = document.createElement('div');
+    c.className = `card ${uvMap[u.lv]}${t.done?' done-card':''}`;
+    c.style.animationDelay = `${i*.03}s`;
+
+    const chips = (t.assignees||[]).map(id=>{
+      const mb=TM[id]; if(!mb) return '';
+      return `<span class="chip" style="background:${mb.color}18;color:${mb.color}">
+        <span class="chip-dot" style="background:${mb.color}"></span>${mb.name}
+      </span>`;
+    }).join('');
+
+    const now = new Date(); now.setHours(0,0,0,0);
+    let dates = `<span class="dp">📅 ${fmt(t.startDate)}</span>`;
+    if (t.deadline) {
+      const dl = new Date(t.deadline); dl.setHours(0,0,0,0);
+      const d2 = Math.ceil((dl-now)/86400000);
+      const cls = d2<0?'ov':d2<=3?'sn':'';
+      const lbl = d2<0?`⚠️ פג ${Math.abs(d2)}י`:d2===0?'🔴 היום!':d2===1?'🟠 מחר':fmt(t.deadline);
+      dates += `<span class="dp ${cls}">🏁 ${lbl}</span>`;
+    }
+    const catTag = t.category?`<span class="tag tc">${t.category}</span>`:'';
+
+    c.innerHTML = `
+      <div class="card-bar"></div>
+      <div class="card-body">
+        <div class="card-hd">
+          <button class="done-btn${t.done?' ticked':''}" onclick="toggleDone('${t.id}')"
+                  title="${t.done?'סמן כפעיל':'סמן כהושלם'}"></button>
+          <div class="card-title${t.done?' x':''}">${esc(t.title)}</div>
+        </div>
+        ${t.desc?`<div class="card-desc">${esc(t.desc)}</div>`:''}
+        <div class="card-chips">${chips}</div>
+        <div class="card-dates">${dates}</div>
+      </div>
+      <div class="card-ft">
+        <div class="tags">
+          <span class="tag ${tagMap[u.lv]}">${UL[u.lv]}</span>
+          ${catTag}
+        </div>
+        <div class="cacts">
+          <button class="ib" onclick="openEdit('${t.id}')" title="ערוך">✏️</button>
+          <button class="ib dl" onclick="del('${t.id}')" title="מחק">🗑️</button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(c);
+  });
+}
+
+/* ══════════════════════════════
+   ACTIONS
+══════════════════════════════ */
+function setStatus(btn) {
+  fStat = btn.dataset.status;
+  btn.closest('.pills').querySelectorAll('.pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGrid();
+}
+function setSort(btn) {
+  fSort = btn.dataset.sort;
+  btn.closest('.pills').querySelectorAll('.pill').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderGrid();
+}
+
+async function toggleDone(id) {
+  const t = tasks[id]; if(!t) return;
+  await dbPatch(id, { done:!t.done, doneAt:!t.done?new Date().toISOString():null });
+}
+
+async function del(id) {
+  if (!confirm('למחוק את המשימה?')) return;
+  await dbDel(id);
+}
+
+/* ══════════════════════════════
+   MODAL
+══════════════════════════════ */
+function buildAgrid(sel=[]) {
+  const g = document.getElementById('agrid');
+  g.innerHTML = '';
+  TEAM.filter(m=>m.id!=='all').forEach(m=>{
+    const on = sel.includes(m.id);
+    const el = document.createElement('div');
+    el.className = 'ai'+(on?' on':'');
+    el.dataset.id = m.id;
+    el.innerHTML = `
+      <div class="ai-av" style="background:${m.color}">${m.ini}</div>
+      <div><div class="ai-nm">${m.name}</div><div style="font-size:9px;color:var(--muted)">${m.role}</div></div>
+      <div class="ai-ck">${on?'✓':''}</div>
+    `;
+    el.onclick=()=>{
+      el.classList.toggle('on');
+      el.querySelector('.ai-ck').textContent = el.classList.contains('on')?'✓':'';
+    };
+    g.appendChild(el);
+  });
+}
+
+function openAdd() {
+  editId=null;
+  document.getElementById('mTitle').innerHTML='משימה <em>חדשה</em>';
+  document.getElementById('fT').value='';
+  document.getElementById('fD').value='';
+  document.getElementById('fC').value='';
+  document.getElementById('fS').value=today();
+  document.getElementById('fDl').value='';
+  buildAgrid(fTeam!=='all'?[fTeam]:[]);
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('fT').focus();
+}
+
+function openEdit(id) {
+  const t=tasks[id]; if(!t) return;
+  editId=id;
+  document.getElementById('mTitle').innerHTML='ערוך <em>משימה</em>';
+  document.getElementById('fT').value=t.title;
+  document.getElementById('fD').value=t.desc||'';
+  document.getElementById('fC').value=t.category||'';
+  document.getElementById('fS').value=t.startDate;
+  document.getElementById('fDl').value=t.deadline||'';
+  buildAgrid(t.assignees||[]);
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+async function save() {
+  const title = document.getElementById('fT').value.trim();
+  const desc  = document.getElementById('fD').value.trim();
+  const cat   = document.getElementById('fC').value;
+  const start = document.getElementById('fS').value;
+  const dead  = document.getElementById('fDl').value;
+  const asgns = [...document.querySelectorAll('.ai.on')].map(el=>el.dataset.id);
+
+  if (!title) { alert('נא למלא כותרת'); return; }
+  if (!start) { alert('נא לבחור תאריך התחלה'); return; }
+  if (!asgns.length) { alert('נא לשייך לפחות חבר/ת צוות אחד/ת'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled=true; btn.textContent='⏳ שומר...';
+
+  const data = {
+    title, desc, category:cat,
+    startDate:start, deadline:dead||null,
+    assignees:asgns, done:false,
+    createdAt: new Date().toISOString()
+  };
+
+  if (editId) {
+    data.done = tasks[editId]?.done||false;
+    data.doneAt = tasks[editId]?.doneAt||null;
+    data.createdAt = tasks[editId]?.createdAt||data.createdAt;
+    await dbSet(editId, data);
+  } else {
+    const nid = 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    await dbSet(nid, data);
+  }
+
+  btn.disabled=false; btn.textContent='💾 שמור משימה';
+  closeModal();
+}
+
+/* ══════════════════════════════
+   UTILS
+══════════════════════════════ */
+function today() { return new Date().toISOString().split('T')[0]; }
+function fmt(d) {
+  if(!d) return '—';
+  const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`;
+}
+function esc(s) {
+  return (s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════
+   SEED DATA (localStorage fallback)
+══════════════════════════════ */
+function seed() {
+  const a = n=>{ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+  const mk=(t,d,as,c,s,dl,done=false)=>({
+    title:t,desc:d,assignees:as,category:c,
+    startDate:s,deadline:dl,done,
+    createdAt:new Date().toISOString()
+  });
+  const items = [
+    ['הכנת לומדה — הגנת עורף','פיתוח לומדה אינטראקטיבית עם מבחן ומשוב',['eden','mai'],'לומדה',a(-5),a(2)],
+    ['עיצוב חומרים לכנס','באנר, פוסטרים ושקפי פתיחה',['friel'],'גרפיקה',a(-3),a(5)],
+    ['עדכון תוכן הדרכת חירום','בחינה ועדכון לפי נהלים חדשים',['shir','rotem'],'הדרכה',a(0),a(14)],
+    ['ישיבת צוות שבועית','סיכום התקדמות ועדכונים',['mirav','ariel','shir','eden','friel','mai','rotem'],'ניהול',a(1),a(1)],
+    ['בחינת פלטפורמת e-learning','השוואת פלטפורמות להטמעת לומדות',['ariel','eden'],'מחקר',a(-10),a(30)],
+    ['תוכן הדרכה לרב"טים חדשים','',['rotem'],'הדרכה',a(-2),a(7)],
+    ['עריכת סרטון הסבר לאפליקציה','',['mai','friel'],'לומדה',a(-1),null],
+  ];
+  items.forEach((args,i)=>{ tasks['ts'+i]=mk(...args); });
+  // one done task
+  tasks['ts_done'] = mk('הגשת דוח התקדמות','',['mirav'],'ניהול',a(-7),null,true);
+  lsSave();
+}
+
+/* ══════════════════════════════
+   BOOT
+══════════════════════════════ */
+if (window._fbReady) {
+  initFB();
+} else {
+  document.addEventListener('fb-ready',   initFB);
+  document.addEventListener('fb-failed',  fallback);
+  setTimeout(()=>{ if(!fbLive) fallback(); }, 3500);
+}
+</script>
+</body>
+</html>
